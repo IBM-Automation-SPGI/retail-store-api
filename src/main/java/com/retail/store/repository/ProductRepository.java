@@ -35,8 +35,7 @@ public class ProductRepository {
     }
 
     public List<Product> search(String q) {
-        String sql = "SELECT id, name, description, price, stock FROM products WHERE LOWER(name) LIKE '%"
-                + q.toLowerCase() + "%'";
-        return jdbcTemplate.query(sql, MAPPER);
+        String sql = "SELECT id, name, description, price, stock FROM products WHERE LOWER(name) LIKE ?";
+        return jdbcTemplate.query(sql, MAPPER, "%" + q.toLowerCase() + "%");
     }
 }

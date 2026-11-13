@@ -53,4 +53,11 @@ class ProductApiTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(0)));
     }
+
+    @Test
+    void searchTreatsSqlMetacharactersAsLiteralText() throws Exception {
+        mvc.perform(get("/api/products/search").param("q", "' OR '1'='1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(0)));
+    }
 }
