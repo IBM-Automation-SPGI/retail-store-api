@@ -36,10 +36,9 @@ public class ReceiptService {
         if (order.getNote() != null && !order.getNote().isEmpty()) {
             sb.append("\nNote: ").append(order.getNote()).append('\n');
         }
-        sb.append('\n').append(FOOTER).append('\n');
-
-        StringSubstitutor substitutor = StringSubstitutor.createInterpolator();
-        String text = substitutor.replace(sb.toString());
+        // Interpolate only the constant footer; order data (e.g. the customer note) must stay literal.
+        sb.append('\n').append(StringSubstitutor.createInterpolator().replace(FOOTER)).append('\n');
+        String text = sb.toString();
 
         write(order.getId(), text);
         return text;

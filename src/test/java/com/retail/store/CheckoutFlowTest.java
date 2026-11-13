@@ -139,6 +139,24 @@ class CheckoutFlowTest {
     }
 
     @Test
+    void noteIsNotInterpolatedInReceipt() throws Exception {
+        addToCart(3, 3, 1);
+        String note = "${sys:java.version} ${env:PATH} ${base64Encoder:abc}";
+
+        MvcResult result = mvc.perform(post("/api/checkout/3")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(mapper.writeValueAsString(mapper.createObjectNode().put("note", note))))
+                .andExpect(status().isCreated())
+                .andReturn();
+        long orderId = mapper.readTree(result.getResponse().getContentAsString()).get("id").asLong();
+
+        String text = Files.readString(receiptsDir.resolve("receipt-" + orderId + ".txt"));
+        assertTrue(text.contains("Note: " + note));
+        assertTrue(text.contains("Printed "));
+        assertTrue(!text.contains("${date:"));
+    }
+
+    @Test
     void missingReceiptIsNotFound() throws Exception {
         mvc.perform(get("/api/receipts/download").param("file", "receipt-0.txt"))
                 .andExpect(status().isNotFound());
