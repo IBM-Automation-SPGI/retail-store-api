@@ -4,18 +4,24 @@ import com.retail.store.model.Order;
 import com.retail.store.model.OrderItem;
 import org.apache.commons.text.StringSubstitutor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.regex.Pattern;
 
 @Service
 public class ReceiptService {
 
     private static final String FOOTER = "Printed ${date:yyyy-MM-dd HH:mm}";
+    private static final Pattern RECEIPT_NAME = Pattern.compile("receipt-\\d+\\.txt");
 
     @Value("${store.receipts.dir:./receipts}")
     private String receiptsDir;
@@ -46,17 +52,32 @@ public class ReceiptService {
     }
 
     private void write(long orderId, String text) {
-        File dir = new File(receiptsDir);
-        dir.mkdirs();
-        File target = new File(dir, "receipt-" + orderId + ".txt");
         try {
-            Files.write(target.toPath(), text.getBytes(StandardCharsets.UTF_8));
+            Path base = baseDir();
+            Files.createDirectories(base);
+            Path target = resolveInside(base, "receipt-" + orderId + ".txt");
+            Files.write(target, text.getBytes(StandardCharsets.UTF_8));
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
 
     public File locate(String file) {
-        return new File(receiptsDir, file);
+        if (file == null || !RECEIPT_NAME.matcher(file).matches()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid receipt name");
+        }
+        return resolveInside(baseDir(), file).toFile();
+    }
+
+    private Path baseDir() {
+        return Paths.get(receiptsDir).toAbsolutePath().normalize();
+    }
+
+    private static Path resolveInside(Path base, String name) {
+        Path resolved = base.resolve(name).normalize();
+        if (!resolved.startsWith(base)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid receipt name");
+        }
+        return resolved;
     }
 }

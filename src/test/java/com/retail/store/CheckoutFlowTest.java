@@ -143,4 +143,26 @@ class CheckoutFlowTest {
         mvc.perform(get("/api/receipts/download").param("file", "receipt-0.txt"))
                 .andExpect(status().isNotFound());
     }
+
+    @Test
+    void receiptDownloadRejectsPathTraversal() throws Exception {
+        Path outside = receiptsDir.getParent().resolve("outside-receipt-test.txt");
+        Files.writeString(outside, "secret");
+        try {
+            String[] attempts = {
+                    "../" + outside.getFileName(),
+                    "../../etc/passwd",
+                    outside.toString(),
+                    "receipt-1.txt/../../" + outside.getFileName(),
+                    "receipt-1.txt\\..\\..\\x",
+                    "receipt-abc.txt"
+            };
+            for (String attempt : attempts) {
+                mvc.perform(get("/api/receipts/download").param("file", attempt))
+                        .andExpect(status().isBadRequest());
+            }
+        } finally {
+            Files.deleteIfExists(outside);
+        }
+    }
 }
